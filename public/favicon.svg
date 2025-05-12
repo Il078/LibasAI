@@ -1,0 +1,6 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Simplified Hanger Icon for Favicon -->
+  <rect width="32" height="32" rx="6" fill="#4040a1" />
+  <path d="M16 6C14.343 6 13 7.343 13 9C13 9.928 13.42 10.75 14.083 11.309V12L16 13.333L17.917 12V11.309C18.58 10.75 19 9.928 19 9C19 7.343 17.657 6 16 6Z" fill="white" />
+  <path d="M8 12V14L16 20L24 14V12L16 18L8 12Z" fill="white" />
+</svg> 

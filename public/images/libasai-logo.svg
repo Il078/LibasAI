@@ -1,0 +1,7 @@
+<svg width="300" height="100" viewBox="0 0 300 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hanger Icon -->
+  <path d="M60 25C54.477 25 50 29.477 50 35C50 38.123 51.574 40.878 54 42.618V45L90 70L126 45V42.618C128.426 40.878 130 38.123 130 35C130 29.477 125.523 25 120 25C114.477 25 110 29.477 110 35C110 35.57 110.053 36.129 110.152 36.674L90 50L69.848 36.674C69.947 36.129 70 35.57 70 35C70 29.477 65.523 25 60 25Z" fill="#2D2948"/>
+  
+  <!-- Text "LibasA" -->
+  <text x="150" y="60" font-family="Arial, sans-serif" font-size="45" font-weight="bold" fill="#2D2948">LibasA</text>
+</svg> 
