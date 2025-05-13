@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { classifyClothingItem, getOutfitMatches, getStoreRecommendations, getProductRecommendations, getImageEmbeddings } from '@/lib/ai-service';
+import { classifyClothingItem, getOutfitMatches } from '@/lib/ai-service';
 
 // Type definitions
 interface ClassifiedItem {
@@ -30,44 +30,11 @@ interface MatchedItem {
     match_score: number;
 }
 
-interface StoreRecommendation {
-    id: number;
-    name: string;
-    description: string;
-    logoUrl: string;
-    storeUrl: string;
-    categories: string[];
-    styles: string[];
-    priceRange: string;
-    score: number;
-}
-
-interface ProductItem {
-    id: number;
-    name: string;
-    category: string;
-    color: string;
-    pattern: string;
-    material: string;
-    style: string;
-    season: string;
-    price: number;
-    currency: string;
-    storeId: number;
-    storeName: string;
-    imageUrl: string;
-    productUrl: string;
-    match_score: number;
-}
-
 export default function CreateOutfit() {
     const [uploadedImage, setUploadedImage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [classifiedItem, setClassifiedItem] = useState<ClassifiedItem | null>(null);
     const [matchedItems, setMatchedItems] = useState<MatchedItem[] | null>(null);
-    const [productItems, setProductItems] = useState<ProductItem[] | null>(null);
-    const [storeRecommendations, setStoreRecommendations] = useState<StoreRecommendation[] | null>(null);
-    const [selectedItems, setSelectedItems] = useState<ProductItem[]>([]);
     const [occasion, setOccasion] = useState('casual');
     const [aiMode, setAiMode] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -98,26 +65,10 @@ export default function CreateOutfit() {
                 // Reset any previous results
                 setClassifiedItem(null);
                 setMatchedItems(null);
-                setStoreRecommendations(null);
-                setProductItems(null);
-                setSelectedItems([]);
                 setError(null);
             };
             reader.readAsDataURL(file);
         }
-    };
-
-    // Add item to outfit
-    const addToOutfit = (product: ProductItem) => {
-        // Check if the item is already in the outfit
-        if (!selectedItems.some(item => item.id === product.id)) {
-            setSelectedItems([...selectedItems, product]);
-        }
-    };
-
-    // Remove item from outfit
-    const removeFromOutfit = (productId: number) => {
-        setSelectedItems(selectedItems.filter(item => item.id !== productId));
     };
 
     // Generate outfit matches using AI
@@ -138,20 +89,7 @@ export default function CreateOutfit() {
             const classifiedData = classificationResponse.data;
             setClassifiedItem(classifiedData);
 
-            // Step 2: Generate image embeddings for visual similarity (CLIP model)
-            let embeddings = null;
-            try {
-                console.log("Getting visual embeddings for outfit matching");
-                const embeddingResponse = await getImageEmbeddings(uploadedImage);
-                if (embeddingResponse.success) {
-                    embeddings = embeddingResponse.data;
-                    console.log("Successfully generated embeddings with source:", embeddings?.source || 'unknown');
-                }
-            } catch (embedError) {
-                console.error("Error generating embeddings, will continue without them:", embedError);
-            }
-
-            // Step 3: Get outfit matches based on classified item
+            // Step 2: Get outfit matches based on classified item
             const matchResponse = await getOutfitMatches(classifiedData, occasion);
 
             if (!matchResponse.success) {
@@ -159,56 +97,6 @@ export default function CreateOutfit() {
             }
 
             setMatchedItems(matchResponse.data.matches);
-
-            // Step 4: Get store recommendations based on classified item
-            try {
-                const storeResponse = await getStoreRecommendations({
-                    category: classifiedData.category,
-                    style: classifiedData.attributes.style,
-                    priceRange: occasion === 'formal' ? 'premium' : 'mid-range'
-                });
-
-                if (storeResponse.success) {
-                    console.log("Successfully received store recommendations:", storeResponse.data.recommendations?.length || 0);
-                    setStoreRecommendations(storeResponse.data.recommendations);
-                } else {
-                    console.error("Store API returned unsuccessful response:", storeResponse);
-                }
-            } catch (storeError) {
-                console.error("Error getting store recommendations:", storeError);
-            }
-
-            // Step 5: Get product recommendations with images and visual similarity
-            try {
-                const productResponse = await getProductRecommendations({
-                    category: classifiedData.category,
-                    color: classifiedData.attributes.color,
-                    style: classifiedData.attributes.style,
-                    pattern: classifiedData.attributes.pattern,
-                    season: classifiedData.attributes.season,
-                    imageData: uploadedImage // Pass image data for visual similarity
-                });
-
-                if (productResponse.success) {
-                    console.log("Successfully received product recommendations:", productResponse.data.recommendations?.length || 0);
-                    setProductItems(productResponse.data.recommendations);
-                    // Add the base item (uploaded) as the first in selectedItems
-                    if (productResponse.data.recommendations?.length > 0) {
-                        setSelectedItems([{
-                            ...productResponse.data.recommendations[0],
-                            id: 0, // Use a unique ID for the uploaded item
-                            name: `${classifiedData.attributes.color} ${classifiedData.category}`,
-                            imageUrl: uploadedImage
-                        }]);
-                    }
-                } else {
-                    console.error("Product API returned unsuccessful response:", productResponse);
-                    setError("Failed to get product recommendations. Please try again.");
-                }
-            } catch (productError) {
-                console.error("Error getting product recommendations:", productError);
-                setError("Failed to connect to product API. Please try again.");
-            }
 
         } catch (err) {
             console.error('Error in AI processing:', err);
@@ -489,268 +377,168 @@ export default function CreateOutfit() {
                             {error}
                         </motion.div>
                     )}
-
-                    {/* Current Outfit Display */}
-                    {selectedItems.length > 0 && (
-                        <motion.div
-                            className="bg-white p-6 rounded-lg shadow-sm border border-gray-100"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                        >
-                            <h2 className="text-lg font-medium text-[#4040a1] mb-4">Your Outfit</h2>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                {selectedItems.map((item) => (
-                                    <motion.div
-                                        key={item.id}
-                                        className="relative rounded-lg overflow-hidden border border-gray-100 bg-gray-50"
-                                        whileHover={{ y: -5, scale: 1.02 }}
-                                    >
-                                        <div className="aspect-square relative">
-                                            <Image
-                                                src={item.imageUrl}
-                                                alt={item.name}
-                                                fill
-                                                style={{ objectFit: 'cover' }}
-                                            />
-                                            <button
-                                                onClick={() => removeFromOutfit(item.id)}
-                                                className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-sm text-gray-500 hover:text-red-500"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                        <div className="p-2">
-                                            <p className="text-xs font-medium truncate">{item.name}</p>
-                                            <p className="text-xs text-gray-500">{item.category}</p>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-
-                            <div className="mt-4 flex justify-between">
-                                <motion.button
-                                    type="button"
-                                    className="text-sm font-medium text-[#4040a1] hover:text-[#333380] transition-colors"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    Save Outfit
-                                </motion.button>
-                                <motion.button
-                                    type="button"
-                                    className="text-sm font-medium text-[#4040a1] hover:text-[#333380] transition-colors"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    Share
-                                </motion.button>
-                            </div>
-                        </motion.div>
-                    )}
                 </motion.div>
 
                 {/* Right column - Results */}
                 <motion.div
-                    className="space-y-8"
+                    className="bg-white p-6 rounded-lg shadow-sm border border-gray-100"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
                 >
-                    {/* Product Recommendations Section */}
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                        <h2 className="text-lg font-medium text-[#4040a1] mb-4">AI Product Recommendations</h2>
+                    <h2 className="text-lg font-medium text-[#4040a1] mb-4">AI Outfit Matches</h2>
 
-                        {!productItems && !isLoading && (
-                            <div className="text-center py-16">
-                                <svg
-                                    className="mx-auto h-12 w-12 text-gray-400"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    aria-hidden="true"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-                                    />
-                                </svg>
-                                <h3 className="mt-2 text-sm font-medium text-gray-900">No product matches yet</h3>
-                                <p className="mt-1 text-sm text-gray-500">
-                                    Upload an item and click "Generate Outfit Matches" to see AI-powered product suggestions.
-                                </p>
-                            </div>
-                        )}
-
-                        {isLoading && (
-                            <div className="text-center py-16">
-                                <motion.svg
-                                    className="h-10 w-10 mx-auto text-[#4040a1]"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                >
-                                    <circle
-                                        className="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                    ></circle>
-                                    <path
-                                        className="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
-                                </motion.svg>
-                                <h3 className="mt-4 text-sm font-medium text-gray-900">AI is analyzing your item</h3>
-                                <p className="mt-1 text-sm text-gray-500">
-                                    Finding the perfect matches based on style, color, and occasion...
-                                </p>
-                            </div>
-                        )}
-
-                        {productItems && !isLoading && (
-                            <motion.div
-                                className="space-y-6"
-                                variants={container}
-                                initial="hidden"
-                                animate="show"
+                    {!matchedItems && !isLoading && (
+                        <div className="text-center py-16">
+                            <svg
+                                className="mx-auto h-12 w-12 text-gray-400"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                aria-hidden="true"
                             >
-                                <p className="text-sm text-gray-500">
-                                    Based on your {classifiedItem?.category} and {occasion} occasion, we've found these matches:
-                                </p>
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                                />
+                            </svg>
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No outfit matches yet</h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                                Upload an item and click "Generate Outfit Matches" to see AI-powered suggestions.
+                            </p>
+                        </div>
+                    )}
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    {productItems.map((product) => (
-                                        <motion.div
-                                            key={product.id}
-                                            className="border border-gray-100 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
-                                            variants={item}
-                                            whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                                        >
-                                            <div className="aspect-square relative">
-                                                <Image
-                                                    src={product.imageUrl}
-                                                    alt={product.name}
-                                                    fill
-                                                    style={{ objectFit: 'cover' }}
-                                                />
-                                                <div className="absolute top-2 right-2 bg-[#4040a1] text-white text-xs font-bold px-2 py-1 rounded-full">
-                                                    {product.match_score}%
-                                                </div>
-                                            </div>
-                                            <div className="p-3">
-                                                <h3 className="font-medium text-sm truncate">{product.name}</h3>
-                                                <div className="flex justify-between items-center mt-1">
-                                                    <div className="flex items-center space-x-1">
-                                                        <span className="text-xs bg-[#4040a1]/10 text-[#4040a1] px-1.5 py-0.5 rounded-sm capitalize">
-                                                            {product.material}
-                                                        </span>
-                                                        <span className="text-xs bg-[#4040a1]/10 text-[#4040a1] px-1.5 py-0.5 rounded-sm capitalize">
-                                                            {product.color}
-                                                        </span>
-                                                    </div>
-                                                    <span className="text-xs font-medium">${product.price}</span>
-                                                </div>
-                                                <div className="mt-3 flex justify-between items-center">
-                                                    <button
-                                                        className="text-xs font-medium text-[#4040a1] hover:text-[#333380] transition-colors"
-                                                        onClick={() => window.open(product.productUrl, "_blank")}
-                                                    >
-                                                        View Product
-                                                    </button>
-                                                    <motion.button
-                                                        className="text-xs font-medium bg-[#4040a1] text-white px-2 py-1 rounded hover:bg-[#333380] transition-colors"
-                                                        whileHover={{ scale: 1.05 }}
-                                                        whileTap={{ scale: 0.95 }}
-                                                        onClick={() => addToOutfit(product)}
-                                                        disabled={selectedItems.some(item => item.id === product.id)}
-                                                    >
-                                                        {selectedItems.some(item => item.id === product.id)
-                                                            ? 'Added to Outfit'
-                                                            : 'Add to Outfit'}
-                                                    </motion.button>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        )}
-                    </div>
+                    {isLoading && (
+                        <div className="text-center py-16">
+                            <motion.svg
+                                className="h-10 w-10 mx-auto text-[#4040a1]"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            >
+                                <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                ></circle>
+                                <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                ></path>
+                            </motion.svg>
+                            <h3 className="mt-4 text-sm font-medium text-gray-900">AI is analyzing your item</h3>
+                            <p className="mt-1 text-sm text-gray-500">
+                                Finding the perfect matches based on style, color, and occasion...
+                            </p>
+                        </div>
+                    )}
 
-                    {/* Store Recommendations Section */}
-                    {storeRecommendations && !isLoading && (
+                    {matchedItems && !isLoading && (
                         <motion.div
-                            className="bg-white p-6 rounded-lg shadow-sm border border-gray-100"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, delay: 0.3 }}
+                            className="space-y-6"
+                            variants={container}
+                            initial="hidden"
+                            animate="show"
                         >
-                            <h2 className="text-lg font-medium text-[#4040a1] mb-4">Where to Shop</h2>
-
-                            <p className="text-sm text-gray-500 mb-4">
-                                Based on your style and preferences, here are some stores we recommend:
+                            <p className="text-sm text-gray-500">
+                                Based on your {classifiedItem?.category} and {occasion} occasion, we've found these matches:
                             </p>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                {storeRecommendations.map((store) => (
+                            <div className="space-y-4">
+                                {matchedItems.map((match) => (
                                     <motion.div
-                                        key={store.id}
-                                        className="border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow"
+                                        key={match.id}
+                                        className="flex border border-gray-100 rounded-lg overflow-hidden"
+                                        variants={item}
                                         whileHover={{ y: -5, transition: { duration: 0.2 } }}
                                     >
-                                        <div className="flex items-center mb-2">
-                                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden mr-3">
-                                                <div className="relative w-10 h-10">
-                                                    {/* Use a placeholder for now */}
-                                                    <div className="absolute inset-0 bg-[#4040a1]/20 flex items-center justify-center text-[#4040a1] font-bold text-sm">
-                                                        {store.name.substring(0, 2).toUpperCase()}
-                                                    </div>
+                                        <div className="w-1/4 bg-[#4040a1]/10 flex items-center justify-center">
+                                            <div className="p-4 text-center">
+                                                <div className="h-10 w-10 rounded-full mx-auto flex items-center justify-center bg-white shadow-sm">
+                                                    <span className="text-lg font-bold text-[#4040a1]">{match.match_score}%</span>
                                                 </div>
-                                            </div>
-                                            <div>
-                                                <h3 className="font-medium text-sm">{store.name}</h3>
-                                                <div className="flex items-center mt-1">
-                                                    <span className="text-xs bg-[#4040a1]/10 text-[#4040a1] px-2 py-0.5 rounded-full">
-                                                        {store.score}% match
-                                                    </span>
-                                                </div>
+                                                <span className="text-xs block mt-1">Match</span>
                                             </div>
                                         </div>
-
-                                        <p className="text-xs text-gray-500 mt-2 line-clamp-2">
-                                            {store.description}
-                                        </p>
-
-                                        <div className="mt-3 flex items-center justify-between">
-                                            <span className="text-xs font-light">
-                                                Price: {store.priceRange === 'budget' ? '💰' :
-                                                    store.priceRange === 'mid-range' ? '💰💰' :
-                                                        store.priceRange === 'premium' ? '💰💰💰' : '💰💰💰💰'}
-                                            </span>
-                                            <motion.a
-                                                href={store.storeUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-xs font-medium text-[#4040a1] hover:text-[#333380]"
-                                                whileHover={{ x: 2 }}
-                                                whileTap={{ scale: 0.95 }}
-                                            >
-                                                Visit Store →
-                                            </motion.a>
+                                        <div className="w-3/4 p-4">
+                                            <h3 className="font-medium capitalize">{match.color} {match.category}</h3>
+                                            <div className="flex mt-2">
+                                                <span className="inline-flex items-center rounded-full bg-[#4040a1]/10 px-2.5 py-0.5 text-xs font-medium text-[#4040a1] capitalize">
+                                                    {match.material}
+                                                </span>
+                                                <span className="inline-flex items-center rounded-full bg-[#4040a1]/10 px-2.5 py-0.5 text-xs font-medium text-[#4040a1] capitalize ml-2">
+                                                    {match.pattern}
+                                                </span>
+                                            </div>
+                                            <div className="mt-3">
+                                                <motion.button
+                                                    className="text-sm font-medium text-[#4040a1] hover:text-[#333380] transition-colors"
+                                                    whileHover={{ x: 2 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                >
+                                                    Add to Outfit
+                                                </motion.button>
+                                            </div>
                                         </div>
                                     </motion.div>
                                 ))}
                             </div>
+
+                            {matchedItems.length > 0 && (
+                                <div className="mt-6 pt-6 border-t border-gray-200">
+                                    <h3 className="text-sm font-medium text-gray-900">Complete Outfit</h3>
+                                    <div className="mt-2 grid grid-cols-5 gap-2">
+                                        <div className="bg-gray-50 rounded-md aspect-square flex items-center justify-center border border-gray-100">
+                                            {uploadedImage && (
+                                                <div className="w-full h-full relative">
+                                                    <Image
+                                                        src={uploadedImage}
+                                                        alt="Base item"
+                                                        fill
+                                                        style={{ objectFit: 'cover' }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                        {[...Array(4)].map((_, i) => (
+                                            <div key={i} className="bg-gray-50 rounded-md aspect-square flex items-center justify-center text-gray-400 border border-gray-100">
+                                                {matchedItems[i] ? (
+                                                    <span className="text-xs text-center p-2">{matchedItems[i].color} {matchedItems[i].category}</span>
+                                                ) : (
+                                                    '+'
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-4 flex justify-between">
+                                        <motion.button
+                                            type="button"
+                                            className="text-sm font-medium text-[#4040a1] hover:text-[#333380] transition-colors"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            Save Outfit
+                                        </motion.button>
+                                        <motion.button
+                                            type="button"
+                                            className="text-sm font-medium text-[#4040a1] hover:text-[#333380] transition-colors"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                        >
+                                            Share
+                                        </motion.button>
+                                    </div>
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </motion.div>

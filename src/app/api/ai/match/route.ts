@@ -19,18 +19,6 @@ const clothingItems = [
     { id: 15, category: 'dress', color: 'black', pattern: 'solid', material: 'polyester', style: 'formal', season: 'all-season' },
 ];
 
-// Define interface for clothing items with match score
-interface ClothingItem {
-    id: number;
-    category: string;
-    color: string;
-    pattern: string;
-    material: string;
-    style: string;
-    season: string;
-    match_score?: number;
-}
-
 // Style matching algorithm (simulated)
 async function findMatchingItems(baseItem: any, occasion: string) {
     // Simulate processing time for AI
@@ -53,7 +41,7 @@ async function findMatchingItems(baseItem: any, occasion: string) {
     const compatibleCategories = categoryMatches[baseItem.category] || [];
 
     // Filter items by compatible categories and season
-    let matchingItems: ClothingItem[] = clothingItems.filter(item =>
+    let matchingItems = clothingItems.filter(item =>
         compatibleCategories.includes(item.category) &&
         (item.season === baseItem.attributes.season || item.season === 'all-season' || baseItem.attributes.season === 'all-season')
     );
@@ -74,7 +62,7 @@ async function findMatchingItems(baseItem: any, occasion: string) {
     }
 
     // Sort by match score (highest first)
-    return matchingItems.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
+    return matchingItems.sort((a, b) => b.match_score - a.match_score);
 }
 
 // Calculate match score between two items (simulated algorithm)
