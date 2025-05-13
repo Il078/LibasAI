@@ -1,3 +1,5 @@
+import { NextResponse } from 'next/server';
+
 // Mock product database with real images and store information
 interface Product {
     id: number;
@@ -160,34 +162,74 @@ export async function GET() {
 
 export async function POST(request: Request) {
     try {
-        console.log("POST /api/ai/products was called");
+        const body = await request.json();
+        const { category, color, style, pattern, season } = body;
 
-        let data;
-        try {
-            data = await request.json();
-            console.log("Request data:", data);
-        } catch (error) {
-            console.error("Error parsing request JSON:", error);
-            data = {};
-        }
-
-        // Get product recommendations (simplified)
-        const recommendations = getProductRecommendations(data);
-
-        console.log(`Found ${recommendations.length} product recommendations`);
-
-        return Response.json({
-            success: true,
-            data: {
-                recommendations: recommendations.slice(0, 8), // Return top 8 products
-                totalResults: recommendations.length
+        // Mock data for demonstration
+        const mockProducts = [
+            {
+                id: '1',
+                name: 'Classic White T-Shirt',
+                price: 29.99,
+                category: category || 't-shirt',
+                color: color || 'white',
+                style: style || 'casual',
+                pattern: pattern || 'solid',
+                material: 'cotton',
+                imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&h=500&fit=crop',
+                productUrl: 'https://example.com/product/1',
+                storeName: 'Fashion Store',
+                match_score: 95
+            },
+            {
+                id: '2',
+                name: 'Slim Fit Jeans',
+                price: 79.99,
+                category: 'jeans',
+                color: 'blue',
+                style: 'casual',
+                pattern: 'solid',
+                material: 'denim',
+                imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=500&h=500&fit=crop',
+                productUrl: 'https://example.com/product/2',
+                storeName: 'Denim Co.',
+                match_score: 85
+            },
+            {
+                id: '3',
+                name: 'Leather Jacket',
+                price: 199.99,
+                category: 'jacket',
+                color: 'black',
+                style: 'casual',
+                pattern: 'solid',
+                material: 'leather',
+                imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&h=500&fit=crop',
+                productUrl: 'https://example.com/product/3',
+                storeName: 'Leather Goods',
+                match_score: 75
             }
+        ];
+
+        // Filter products based on provided criteria
+        const filteredProducts = mockProducts.filter(product => {
+            if (category && product.category !== category) return false;
+            if (color && product.color !== color) return false;
+            if (style && product.style !== style) return false;
+            if (pattern && product.pattern !== pattern) return false;
+            return true;
         });
 
+        return NextResponse.json({
+            success: true,
+            data: {
+                recommendations: filteredProducts
+            }
+        });
     } catch (error) {
-        console.error('Error finding product recommendations:', error);
-        return Response.json(
-            { error: 'Failed to get product recommendations', message: String(error) },
+        console.error('Error in product recommendations:', error);
+        return NextResponse.json(
+            { success: false, error: 'Failed to get product recommendations' },
             { status: 500 }
         );
     }

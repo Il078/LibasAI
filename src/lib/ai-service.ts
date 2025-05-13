@@ -79,8 +79,13 @@ export async function getPersonalizedRecommendations(
 
 // Product Recommendations API
 export async function getProductRecommendations(
-    category: string,
-    filters: { style?: string; price?: string; color?: string } = {}
+    filters: {
+        category?: string;
+        color?: string;
+        style?: string;
+        pattern?: string;
+        season?: string;
+    } = {}
 ): Promise<any> {
     try {
         const response = await fetch('/api/ai/products', {
@@ -88,10 +93,7 @@ export async function getProductRecommendations(
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                category,
-                ...filters
-            }),
+            body: JSON.stringify(filters),
         });
 
         if (!response.ok) {
