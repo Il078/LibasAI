@@ -75,4 +75,56 @@ export async function getPersonalizedRecommendations(
         console.error('Failed to get personalized recommendations:', error);
         throw error;
     }
+}
+
+// Product Recommendations API
+export async function getProductRecommendations(
+    category: string,
+    filters: { style?: string; price?: string; color?: string } = {}
+): Promise<any> {
+    try {
+        const response = await fetch('/api/ai/products', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                category,
+                ...filters
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to get product recommendations:', error);
+        throw error;
+    }
+}
+
+// Store Recommendations API
+export async function getStoreRecommendations(
+    preferences: { style?: string; budget?: string; location?: string } = {}
+): Promise<any> {
+    try {
+        const response = await fetch('/api/ai/stores', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(preferences),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to get store recommendations:', error);
+        throw error;
+    }
 } 
